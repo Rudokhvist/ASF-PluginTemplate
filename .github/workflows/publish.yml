@@ -32,6 +32,7 @@ jobs:
         dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
 
     - name: Setup Pandoc
+      if: startsWith(matrix.os, 'windows-')
       uses: nikeee/setup-pandoc@v1
 
     - name: Verify .NET Core
