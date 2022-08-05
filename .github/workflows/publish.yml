@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [windows-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -41,77 +41,10 @@ jobs:
     - name: Restore packages in preparation for plugin publishing
       run: dotnet restore ${{ env.PLUGIN_NAME }} -p:ContinuousIntegrationBuild=true --nologo
 
-    - name: Publish plugin on Unix
-      if: startsWith(matrix.os, 'macos-') || startsWith(matrix.os, 'ubuntu-')
-      env:
-        VARIANTS: generic
-      shell: sh
-      run: |
-        set -eu
-
-        publish() {
-            dotnet publish "$PLUGIN_NAME" -c "$CONFIGURATION" -f "$NET_CORE_VERSION" -o "out/${1}/${PLUGIN_NAME}" -p:ContinuousIntegrationBuild=true -p:TargetLatestRuntimePatch=false -p:UseAppHost=false --no-restore --nologo
-
-            # By default use fastest compression
-            seven_zip_args="-mx=1"
-            zip_args="-1"
-
-            # Include extra logic for builds marked for release
-            case "$GITHUB_REF" in
-                "refs/tags/"*)
-                    # Tweak compression args for release publishing
-                    seven_zip_args="-mx=9 -mfb=258 -mpass=15"
-                    zip_args="-9"
-                    ;;
-            esac
-
-            # Create the final zip file
-            case "$(uname -s)" in
-                "Darwin")
-                    # We prefer to use zip on OS X as 7z implementation on that OS doesn't handle file permissions (chmod +x)
-                    if command -v zip >/dev/null; then
-                        (
-                            cd "${GITHUB_WORKSPACE}/out/${1}"
-                            zip -q -r $zip_args "../${PLUGIN_NAME}-${1}.zip" .
-                        )
-                    elif command -v 7z >/dev/null; then
-                        7z a -bd -slp -tzip -mm=Deflate $seven_zip_args "out/${PLUGIN_NAME}-${1}.zip" "${GITHUB_WORKSPACE}/out/${1}/*"
-                    else
-                        echo "ERROR: No supported zip tool!"
-                        return 1
-                    fi
-                    ;;
-                *)
-                    if command -v 7z >/dev/null; then
-                        7z a -bd -slp -tzip -mm=Deflate $seven_zip_args "out/${PLUGIN_NAME}-${1}.zip" "${GITHUB_WORKSPACE}/out/${1}/*"
-                    elif command -v zip >/dev/null; then
-                        (
-                            cd "${GITHUB_WORKSPACE}/out/${1}"
-                            zip -q -r $zip_args "../${PLUGIN_NAME}-${1}.zip" .
-                        )
-                    else
-                        echo "ERROR: No supported zip tool!"
-                        return 1
-                    fi
-                    ;;
-            esac
-        }
-
-        jobs=""
-
-        for variant in $VARIANTS; do
-            publish "$variant" &
-            jobs="$jobs $!"
-        done
-
-        for job in $jobs; do
-            wait "$job"
-        done
-
     - name: Publish plugin on Windows
       if: startsWith(matrix.os, 'windows-')
       env:
-        VARIANTS: generic generic-netf
+        VARIANTS: generic
       shell: pwsh
       run: |
         Set-StrictMode -Version Latest
@@ -127,11 +60,7 @@ jobs:
 
             Set-Location "$env:GITHUB_WORKSPACE"
 
-            if ($variant -like '*-netf') {
-                $targetFramework = $env:NET_FRAMEWORK_VERSION
-            } else {
-                $targetFramework = $env:NET_CORE_VERSION
-            }
+            $targetFramework = $env:NET_CORE_VERSION
 
             dotnet publish "$env:PLUGIN_NAME" -c "$env:CONFIGURATION" -f "$targetFramework" -o "out\$variant\$env:PLUGIN_NAME" -p:ContinuousIntegrationBuild=true -p:TargetLatestRuntimePatch=false -p:UseAppHost=false --no-restore --nologo
 
@@ -140,7 +69,7 @@ jobs:
             }
 
             if (Test-Path "README.md") {
-                pandoc  --metadata title="$env:PLUGIN_NAME" --standalone --columns 2000 -f markdown-implicit_figures -t html --self-contained -c github-pandoc.css -o "out\$variant\$env:PLUGIN_NAME\README.html" README.md
+                pandoc  --metadata title="$env:PLUGIN_NAME" --standalone --columns 2000 -f markdown-implicit_figures -t html --embed-resources --standalone -c github-pandoc.css -o "out\$variant\$env:PLUGIN_NAME\README.html" README.md
             }
             # By default use fastest compression
             $compressionArgs = '-mx=1'
@@ -171,13 +100,6 @@ jobs:
         name: ${{ matrix.os }}_${{ env.PLUGIN_NAME }}-generic
         path: out/${{ env.PLUGIN_NAME }}-generic.zip
 
-    - name: Upload generic-netf
-      if: startsWith(matrix.os, 'windows-')
-      uses: actions/upload-artifact@v3.1.0
-      with:
-        name: ${{ matrix.os }}_${{ env.PLUGIN_NAME }}-generic-netf
-        path: out/${{ env.PLUGIN_NAME }}-generic-netf.zip
-
   release:
     if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
     needs: publish
@@ -194,12 +116,6 @@ jobs:
       uses: actions/download-artifact@v3.0.0
       with:
         name: windows-latest_${{ env.PLUGIN_NAME }}-generic
-        path: out
-
-    - name: Download generic-netf artifact from windows-latest
-      uses: actions/download-artifact@v3.0.0
-      with:
-        name: windows-latest_${{ env.PLUGIN_NAME }}-generic-netf
         path: out
 
     - name: Create GitHub release
@@ -223,12 +139,3 @@ jobs:
         asset_name: ${{ env.PLUGIN_NAME }}-generic.zip
         asset_content_type: application/zip
 
-    - name: Upload generic-netf to GitHub release
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.github_release.outputs.upload_url }}
-        asset_path: out/${{ env.PLUGIN_NAME }}-generic-netf.zip
-        asset_name: ${{ env.PLUGIN_NAME }}-generic-netf.zip
-        asset_content_type: application/zip
