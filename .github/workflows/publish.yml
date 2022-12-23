@@ -8,7 +8,7 @@ env:
   DOTNET_NOLOGO: true
   DOTNET_SDK_VERSION: 7.0.x
   NET_CORE_VERSION: net7.0
-  NET_FRAMEWORK_VERSION: net48
+  NET_FRAMEWORK_VERSION: net481
   PLUGIN_NAME: MyAwesomePlugin
 
 jobs:
@@ -22,12 +22,12 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3.0.2
+      uses: actions/checkout@v3.2.0
       with:
         submodules: recursive
 
     - name: Setup .NET Core
-      uses: actions/setup-dotnet@v2.1.0
+      uses: actions/setup-dotnet@v3.0.3
       with:
         dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
 
@@ -95,7 +95,7 @@ jobs:
         Get-Job | Receive-Job -Wait
 
     - name: Upload generic
-      uses: actions/upload-artifact@v3.1.0
+      uses: actions/upload-artifact@v3.1.1
       with:
         name: ${{ matrix.os }}_${{ env.PLUGIN_NAME }}-generic
         path: out/${{ env.PLUGIN_NAME }}-generic.zip
@@ -107,15 +107,12 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3.0.2
+      uses: actions/checkout@v3.2.0
 
-    # TODO: It'd be perfect if we could match final artifacts to the platform they target, so e.g. linux build comes from the linux machine
-    # However, that is currently impossible due to https://github.com/dotnet/msbuild/issues/3897
-    # Therefore, we'll (sadly) pull artifacts from Windows machine only for now
-    - name: Download generic artifact from windows-latest
-      uses: actions/download-artifact@v3.0.0
+    - name: Download generic artifact from ubuntu-latest
+      uses: actions/download-artifact@v3.0.1
       with:
-        name: windows-latest_${{ env.PLUGIN_NAME }}-generic
+        name: ubuntu-latest_${{ env.PLUGIN_NAME }}-generic
         path: out
 
     - name: Create GitHub release

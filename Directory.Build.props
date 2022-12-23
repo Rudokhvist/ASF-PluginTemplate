@@ -40,5 +40,4 @@
 		<PublicSign>false</PublicSign>
 		<SignAssembly>true</SignAssembly>
 	</PropertyGroup>
-
 </Project>
