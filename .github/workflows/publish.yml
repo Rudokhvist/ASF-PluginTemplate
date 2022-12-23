@@ -109,10 +109,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3.2.0
 
-    - name: Download generic artifact from ubuntu-latest
+    - name: Download generic artifact from windows-latest
       uses: actions/download-artifact@v3.0.1
       with:
-        name: ubuntu-latest_${{ env.PLUGIN_NAME }}-generic
+        name: windows-latest_${{ env.PLUGIN_NAME }}-generic
         path: out
 
     - name: Create GitHub release
