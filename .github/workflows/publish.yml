@@ -22,12 +22,12 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3.2.0
+      uses: actions/checkout@v3.5.3
       with:
         submodules: recursive
 
     - name: Setup .NET Core
-      uses: actions/setup-dotnet@v3.0.3
+      uses: actions/setup-dotnet@v3.2.0
       with:
         dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
 
@@ -95,7 +95,7 @@ jobs:
         Get-Job | Receive-Job -Wait
 
     - name: Upload generic
-      uses: actions/upload-artifact@v3.1.1
+      uses: actions/upload-artifact@v3.1.2
       with:
         name: ${{ matrix.os }}_${{ env.PLUGIN_NAME }}-generic
         path: out/${{ env.PLUGIN_NAME }}-generic.zip
@@ -107,32 +107,20 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3.2.0
+      uses: actions/checkout@v3.5.3
 
-    - name: Download generic artifact from windows-latest
-      uses: actions/download-artifact@v3.0.1
+    - name: Download generic artifact from ubuntu-latest
+      uses: actions/download-artifact@v3.0.2
       with:
-        name: windows-latest_${{ env.PLUGIN_NAME }}-generic
+        name: ubuntu-latest_${{ env.PLUGIN_NAME }}-generic
         path: out
 
     - name: Create GitHub release
-      id: github_release
-      uses: actions/create-release@v1.1.4
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: ncipollo/release-action@v1.12.0
       with:
-        tag_name: ${{ github.ref }}
-        release_name: ${{ env.PLUGIN_NAME }} V${{ github.ref }}
-        body_path: .github/RELEASE_TEMPLATE.md
+        artifacts: "out/*"
+        bodyFile: .github/RELEASE_TEMPLATE.md
+        makeLatest: false
+        name: ${{ env.PLUGIN_NAME }} V${{ github.ref_name }}
         prerelease: true
-
-    - name: Upload generic to GitHub release
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.github_release.outputs.upload_url }}
-        asset_path: out/${{ env.PLUGIN_NAME }}-generic.zip
-        asset_name: ${{ env.PLUGIN_NAME }}-generic.zip
-        asset_content_type: application/zip
-
+        token: ${{ secrets.GITHUB_TOKEN }}
