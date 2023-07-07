@@ -20,6 +20,10 @@
 		<RepositoryUrl>$(PackageProjectUrl).git</RepositoryUrl>
 	</PropertyGroup>
 
+	<PropertyGroup>
+    		<TargetFrameworks>net7.0</TargetFrameworks>
+	</PropertyGroup>
+
 	<!-- Reset ASF signing settings, as we'll use our own logic -->
 	<PropertyGroup>
 		<AssemblyOriginatorKeyFile />
